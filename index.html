@@ -1,4 +1,4 @@
-<!-- fix-0 -->
+<!-- fix-1 -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -34,7 +34,7 @@
   /* ---- Lock screen ---- */
   #lockScreen{
     min-height:100vh;
-    display:flex;
+    display:none;
     align-items:center;
     justify-content:center;
     padding:24px;
@@ -258,9 +258,98 @@
     font-size:0.78rem;
     margin-top:28px;
   }
+
+  /* ---- Login screen ---- */
+  #loginScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .loginCard{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:40px 36px;
+    max-width:380px;
+    width:100%;
+  }
+  .loginCard h1{
+    font-size:1.5rem;
+    font-weight:600;
+    margin:0 0 6px;
+  }
+  .loginCard p{
+    color:var(--text-muted);
+    font-size:0.92rem;
+    margin:0 0 24px;
+  }
+  .btn-google{
+    width:100%;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:10px 14px;
+    font-size:0.92rem;
+    font-weight:500;
+  }
+  .btn-google:hover{ border-color:var(--brass); }
+  .divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:var(--text-muted);
+    font-size:0.78rem;
+    margin:20px 0;
+  }
+  .divider::before, .divider::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+  .loginCard .field{ margin-bottom:12px; }
+  .loginCard label{
+    display:block;
+    font-size:0.8rem;
+    color:var(--text-muted);
+    margin-bottom:4px;
+  }
+  #loginError{
+    color:var(--rust);
+    font-size:0.85rem;
+    margin-top:10px;
+    min-height:1.2em;
+  }
 </style>
 </head>
 <body>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="loginCard">
+    <h1>Mijn Zaken</h1>
+    <p>Log in met een geautoriseerd account om verder te gaan.</p>
+
+    <button class="btn-google" id="googleBtn">Inloggen met Google</button>
+
+    <div class="divider">of met e-mail</div>
+
+    <div class="field">
+      <label>E-mailadres</label>
+      <input type="text" id="loginEmail" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Wachtwoord</label>
+      <input type="password" id="loginPassword" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="emailLoginBtn">Inloggen</button>
+
+    <div id="loginError"></div>
+  </div>
+</div>
 
 <!-- ============ LOCK SCREEN ============ -->
 <div id="lockScreen">
@@ -348,9 +437,18 @@ const firebaseConfig = {
   appId: "VUL_HIER_IN"
 };
 
+// Alleen deze e-mailadressen mogen de kluis openen. Dit is een client-side
+// check voor een duidelijke foutmelding — de échte afdwinging staat in de
+// Firestore rules (zie README), die dezelfde lijst moet bevatten.
+const ALLOWED_EMAILS = [
+  "VUL_HIER_JOUW_EMAIL_IN@example.com"
+  // , "vertrouwd.persoon@example.com"
+];
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 const META_DOC = db.collection('_meta').doc('crypto');
 const ENTRIES = db.collection('entries');
@@ -426,7 +524,56 @@ async function decryptObj(iv, ct){
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
-/* ---------- Unlock flow ---------- */
+/* ---------- Login flow (Google / e-mail) ---------- */
+
+document.getElementById('googleBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try{
+    await auth.signInWithPopup(googleProvider);
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Inloggen met Google is mislukt.';
+  }
+});
+
+document.getElementById('emailLoginBtn').addEventListener('click', loginWithEmail);
+document.getElementById('loginPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loginWithEmail();
+});
+
+async function loginWithEmail(){
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password){ errEl.textContent = 'Vul e-mail en wachtwoord in.'; return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, password);
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Inloggen is mislukt. Klopt e-mail/wachtwoord?';
+  }
+}
+
+auth.onAuthStateChanged(user => {
+  const loginErr = document.getElementById('loginError');
+  if (!user){
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+  if (!ALLOWED_EMAILS.includes(user.email)){
+    loginErr.textContent = 'Dit account heeft geen toegang tot deze kluis.';
+    auth.signOut();
+    return;
+  }
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+});
+
+/* ---------- Unlock flow (hoofdwachtwoord voor versleuteling) ---------- */
 
 document.getElementById('unlockBtn').addEventListener('click', unlock);
 document.getElementById('passInput').addEventListener('keydown', e => {
@@ -440,8 +587,6 @@ async function unlock(){
   if (!pass){ errEl.textContent = 'Vul een wachtwoord in.'; return; }
 
   try{
-    await auth.signInAnonymously();
-
     let saltB64;
     const metaSnap = await META_DOC.get();
     if (metaSnap.exists){
@@ -484,7 +629,7 @@ document.getElementById('lockBtn').addEventListener('click', () => {
   cryptoKey = null;
   entriesCache = [];
   document.getElementById('app').style.display = 'none';
-  document.getElementById('lockScreen').style.display = 'flex';
+  auth.signOut(); // onAuthStateChanged toont daarna het inlogscherm
 });
 
 /* ---------- Tabs ---------- */
