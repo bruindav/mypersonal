@@ -1,0 +1,630 @@
+<!-- fix-0 -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mijn Zaken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12161d;
+    --panel: #1b212b;
+    --panel-raised: #232a35;
+    --line: #2c3441;
+    --text: #e9e5db;
+    --text-muted: #8a93a3;
+    --brass: #c9a46a;
+    --brass-dim: #8f7null;
+    --rust: #b6604d;
+    --radius: 6px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    min-height:100vh;
+    line-height:1.5;
+  }
+  h1,h2,h3,.serif{ font-family:'Source Serif 4', Georgia, serif; }
+
+  /* ---- Lock screen ---- */
+  #lockScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .lockCard{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:40px 36px;
+    max-width:380px;
+    width:100%;
+  }
+  .lockCard h1{
+    font-size:1.5rem;
+    font-weight:600;
+    margin:0 0 6px;
+    color:var(--text);
+  }
+  .lockCard p{
+    color:var(--text-muted);
+    font-size:0.92rem;
+    margin:0 0 24px;
+  }
+  input[type=password], input[type=text], textarea, select{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:10px 12px;
+    font-size:0.95rem;
+    font-family:inherit;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:2px solid var(--brass);
+    outline-offset:1px;
+    border-color:var(--brass);
+  }
+  button{
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--brass);
+    color:#1b1508;
+    border:none;
+    border-radius:var(--radius);
+    padding:10px 18px;
+    font-size:0.95rem;
+    font-weight:600;
+    width:100%;
+    margin-top:16px;
+  }
+  .btn-primary:hover{ background:#d6b479; }
+  #lockError{
+    color:var(--rust);
+    font-size:0.85rem;
+    margin-top:10px;
+    min-height:1.2em;
+  }
+  .lockFoot{
+    margin-top:22px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-size:0.78rem;
+    color:var(--text-muted);
+  }
+
+  /* ---- Main app ---- */
+  #app{ display:none; max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  header.topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:28px;
+  }
+  header.topbar h1{ font-size:1.6rem; font-weight:600; margin:0; }
+  #lockBtn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    border-radius:var(--radius);
+    padding:6px 12px;
+    font-size:0.82rem;
+  }
+  #lockBtn:hover{ color:var(--text); border-color:var(--brass); }
+
+  nav.tabs{
+    display:flex;
+    gap:2px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:24px;
+  }
+  nav.tabs button{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    padding:10px 4px;
+    margin-right:22px;
+    font-size:0.95rem;
+    border-bottom:2px solid transparent;
+  }
+  nav.tabs button.active{
+    color:var(--text);
+    border-bottom-color:var(--brass);
+  }
+
+  .sectionHead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  .sectionHead p{ color:var(--text-muted); font-size:0.86rem; margin:0; }
+  #addBtn{
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:8px 14px;
+    font-size:0.88rem;
+  }
+  #addBtn:hover{ border-color:var(--brass); }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    margin-bottom:12px;
+  }
+  .card .row{ display:flex; justify-content:space-between; gap:16px; }
+  .card .fieldLabel{
+    font-size:0.72rem;
+    color:var(--text-muted);
+    margin-bottom:2px;
+  }
+  .card .fieldValue{
+    font-size:0.95rem;
+    margin-bottom:12px;
+    word-break:break-word;
+    white-space:pre-wrap;
+  }
+  .card .fieldValue:last-of-type{ margin-bottom:0; }
+  .cardActions{ display:flex; gap:8px; flex-shrink:0; }
+  .iconBtn{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    font-size:0.82rem;
+    padding:2px 4px;
+  }
+  .iconBtn:hover{ color:var(--brass); }
+  .iconBtn.danger:hover{ color:var(--rust); }
+
+  .empty{
+    text-align:center;
+    color:var(--text-muted);
+    padding:48px 20px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+    font-size:0.9rem;
+  }
+
+  /* ---- Modal / form ---- */
+  #formOverlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(8,10,14,0.72);
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:10;
+  }
+  #formCard{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px;
+    max-width:460px;
+    width:100%;
+    max-height:88vh;
+    overflow-y:auto;
+  }
+  #formCard h2{ font-size:1.15rem; margin:0 0 18px; }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:0.8rem;
+    color:var(--text-muted);
+    margin-bottom:4px;
+  }
+  .formActions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+  }
+  .btn-ghost{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    border-radius:var(--radius);
+    padding:9px 16px;
+    font-size:0.9rem;
+  }
+  .btn-ghost:hover{ color:var(--text); }
+  .btn-save{
+    background:var(--brass);
+    border:none;
+    color:#1b1508;
+    font-weight:600;
+    border-radius:var(--radius);
+    padding:9px 18px;
+    font-size:0.9rem;
+  }
+
+  #statusLine{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:0.78rem;
+    margin-top:28px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOCK SCREEN ============ -->
+<div id="lockScreen">
+  <div class="lockCard">
+    <h1 id="lockTitle">Mijn Zaken</h1>
+    <p id="lockSubtitle">Voer je hoofdwachtwoord in om te ontgrendelen.</p>
+    <input type="password" id="passInput" placeholder="Hoofdwachtwoord" autocomplete="off">
+    <button class="btn-primary" id="unlockBtn">Ontgrendelen</button>
+    <div id="lockError"></div>
+    <div class="lockFoot">
+      Dit wachtwoord versleutelt alles lokaal in je browser voordat het wordt opgeslagen. Vergeet je het, dan is er geen manier om de gegevens terug te halen.
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app">
+  <header class="topbar">
+    <h1>Mijn Zaken</h1>
+    <button id="lockBtn">Vergrendelen</button>
+  </header>
+
+  <nav class="tabs">
+    <button data-cat="address" class="active">Adressen</button>
+    <button data-cat="bank">Bankzaken</button>
+    <button data-cat="note">Notities</button>
+  </nav>
+
+  <div class="sectionHead">
+    <p id="sectionHint"></p>
+    <button id="addBtn">+ Nieuw</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="statusLine"></div>
+</div>
+
+<!-- ============ FORM MODAL ============ -->
+<div id="formOverlay">
+  <div id="formCard">
+    <h2 id="formTitle">Nieuw</h2>
+    <div id="formFields"></div>
+    <div class="formActions">
+      <button class="btn-ghost" id="cancelBtn">Annuleren</button>
+      <button class="btn-save" id="saveBtn">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* =========================================================
+   MIJN ZAKEN — fix-0
+   Persoonlijke kluis: adressen, bankzaken, notities.
+   Alle gevoelige velden worden client-side versleuteld
+   (AES-GCM, sleutel afgeleid uit hoofdwachtwoord via PBKDF2)
+   voordat ze naar Firestore gaan. Firebase/Firestore ziet
+   alleen versleutelde blobs.
+
+   VOOR GEBRUIK: vul firebaseConfig hieronder in met je eigen
+   Firebase-project (Project settings -> je webapp -> config).
+   Zet in de Firebase console:
+     - Authentication -> Sign-in method -> Anonymous: AAN
+     - Firestore -> maak database aan (production mode)
+     - Firestore rules:
+         rules_version = '2';
+         service cloud.firestore {
+           match /databases/{database}/documents {
+             match /{document=**} {
+               allow read, write: if request.auth != null;
+             }
+           }
+         }
+   ========================================================= */
+
+const firebaseConfig = {
+  apiKey: "VUL_HIER_IN",
+  authDomain: "VUL_HIER_IN",
+  projectId: "VUL_HIER_IN",
+  storageBucket: "VUL_HIER_IN",
+  messagingSenderId: "VUL_HIER_IN",
+  appId: "VUL_HIER_IN"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const META_DOC = db.collection('_meta').doc('crypto');
+const ENTRIES = db.collection('entries');
+
+let cryptoKey = null;   // derived AES key, lives only in memory
+let entriesCache = [];  // decrypted entries currently in view
+let activeCat = 'address';
+let editingId = null;
+
+const CATS = {
+  address: {
+    label: 'Adressen',
+    hint: 'Mensen die belangrijk zijn om te bereiken of te informeren.',
+    fields: [
+      { key:'naam', label:'Naam', type:'text', required:true },
+      { key:'relatie', label:'Relatie', type:'text' },
+      { key:'adres', label:'Adres', type:'text' },
+      { key:'telefoon', label:'Telefoon', type:'text' },
+      { key:'email', label:'E-mail', type:'text' },
+      { key:'notitie', label:'Notitie', type:'textarea' }
+    ]
+  },
+  bank: {
+    label:'Bankzaken',
+    hint:'Rekeningen, verzekeringen en waar de bijbehorende papieren liggen.',
+    fields:[
+      { key:'omschrijving', label:'Omschrijving (bv. "Betaalrekening ING")', type:'text', required:true },
+      { key:'instelling', label:'Bank / instelling', type:'text' },
+      { key:'iban', label:'IBAN of rekeningnummer', type:'text' },
+      { key:'notitie', label:'Notitie (waar documenten liggen, wie te bellen)', type:'textarea' }
+    ]
+  },
+  note: {
+    label:'Notities',
+    hint:'Alles wat verder belangrijk is om te weten.',
+    fields:[
+      { key:'titel', label:'Titel', type:'text', required:true },
+      { key:'inhoud', label:'Inhoud', type:'textarea' }
+    ]
+  }
+};
+
+/* ---------- Crypto helpers ---------- */
+
+function b64enc(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function b64dec(str){ return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+async function deriveKey(passphrase, saltB64){
+  const salt = b64dec(saltB64);
+  const baseKey = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt, iterations: 150000, hash:'SHA-256' },
+    baseKey,
+    { name:'AES-GCM', length:256 },
+    false,
+    ['encrypt','decrypt']
+  );
+}
+
+async function encryptObj(obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = new TextEncoder().encode(JSON.stringify(obj));
+  const cipher = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, cryptoKey, data);
+  return { iv: b64enc(iv), ct: b64enc(cipher) };
+}
+
+async function decryptObj(iv, ct){
+  const plain = await crypto.subtle.decrypt(
+    { name:'AES-GCM', iv: b64dec(iv) }, cryptoKey, b64dec(ct)
+  );
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+/* ---------- Unlock flow ---------- */
+
+document.getElementById('unlockBtn').addEventListener('click', unlock);
+document.getElementById('passInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') unlock();
+});
+
+async function unlock(){
+  const pass = document.getElementById('passInput').value;
+  const errEl = document.getElementById('lockError');
+  errEl.textContent = '';
+  if (!pass){ errEl.textContent = 'Vul een wachtwoord in.'; return; }
+
+  try{
+    await auth.signInAnonymously();
+
+    let saltB64;
+    const metaSnap = await META_DOC.get();
+    if (metaSnap.exists){
+      saltB64 = metaSnap.data().salt;
+    } else {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      saltB64 = b64enc(salt);
+      await META_DOC.set({ salt: saltB64, createdAt: Date.now() });
+    }
+
+    cryptoKey = await deriveKey(pass, saltB64);
+
+    // Verify passphrase against a known check-value; create it on first use.
+    const checkSnap = await META_DOC.get();
+    if (checkSnap.data().check){
+      try{
+        const check = await decryptObj(checkSnap.data().check.iv, checkSnap.data().check.ct);
+        if (check.ok !== true) throw new Error('bad');
+      }catch(e){
+        errEl.textContent = 'Wachtwoord klopt niet.';
+        cryptoKey = null;
+        return;
+      }
+    } else {
+      const check = await encryptObj({ ok:true });
+      await META_DOC.set({ salt: saltB64, check }, { merge:true });
+    }
+
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('passInput').value = '';
+    await loadEntries();
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Kon niet verbinden. Controleer je internetverbinding.';
+  }
+}
+
+document.getElementById('lockBtn').addEventListener('click', () => {
+  cryptoKey = null;
+  entriesCache = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lockScreen').style.display = 'flex';
+});
+
+/* ---------- Tabs ---------- */
+
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeCat = btn.dataset.cat;
+    renderList();
+  });
+});
+
+/* ---------- Load + render ---------- */
+
+async function loadEntries(){
+  setStatus('Gegevens laden...');
+  const snap = await ENTRIES.get();
+  entriesCache = [];
+  for (const doc of snap.docs){
+    const d = doc.data();
+    try{
+      const fields = await decryptObj(d.iv, d.ct);
+      entriesCache.push({ id: doc.id, category: d.category, fields });
+    }catch(e){
+      console.warn('Kon item niet ontsleutelen', doc.id, e);
+    }
+  }
+  setStatus('');
+  renderList();
+}
+
+function renderList(){
+  document.getElementById('sectionHint').textContent = CATS[activeCat].hint;
+  const list = document.getElementById('list');
+  const items = entriesCache.filter(e => e.category === activeCat);
+
+  if (items.length === 0){
+    list.innerHTML = `<div class="empty">Nog niets toegevoegd bij ${CATS[activeCat].label.toLowerCase()}.</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(item => {
+    const cfg = CATS[item.category];
+    const body = cfg.fields
+      .filter(f => item.fields[f.key])
+      .map(f => `
+        <div class="fieldLabel">${escapeHtml(f.label)}</div>
+        <div class="fieldValue">${escapeHtml(item.fields[f.key])}</div>
+      `).join('');
+    return `
+      <div class="card">
+        <div class="row">
+          <div style="flex:1; min-width:0;">${body}</div>
+          <div class="cardActions">
+            <button class="iconBtn" data-edit="${item.id}">Bewerken</button>
+            <button class="iconBtn danger" data-del="${item.id}">Verwijderen</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('[data-edit]').forEach(b =>
+    b.addEventListener('click', () => openForm(b.dataset.edit))
+  );
+  list.querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => deleteEntry(b.dataset.del))
+  );
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ---------- Form ---------- */
+
+document.getElementById('addBtn').addEventListener('click', () => openForm(null));
+document.getElementById('cancelBtn').addEventListener('click', closeForm);
+
+function openForm(id){
+  editingId = id;
+  const cfg = CATS[activeCat];
+  const existing = id ? entriesCache.find(e => e.id === id) : null;
+
+  document.getElementById('formTitle').textContent = id ? `${cfg.label} bewerken` : `Nieuw: ${cfg.label}`;
+  document.getElementById('formFields').innerHTML = cfg.fields.map(f => {
+    const val = existing ? (existing.fields[f.key] || '') : '';
+    if (f.type === 'textarea'){
+      return `<div class="field"><label>${escapeHtml(f.label)}</label><textarea rows="3" data-field="${f.key}">${escapeHtml(val)}</textarea></div>`;
+    }
+    return `<div class="field"><label>${escapeHtml(f.label)}</label><input type="text" data-field="${f.key}" value="${escapeHtml(val)}"></div>`;
+  }).join('');
+
+  document.getElementById('formOverlay').style.display = 'flex';
+}
+
+function closeForm(){
+  document.getElementById('formOverlay').style.display = 'none';
+  editingId = null;
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const cfg = CATS[activeCat];
+  const fields = {};
+  document.querySelectorAll('[data-field]').forEach(el => {
+    fields[el.dataset.field] = el.value.trim();
+  });
+
+  const requiredField = cfg.fields.find(f => f.required);
+  if (requiredField && !fields[requiredField.key]){
+    alert(`"${requiredField.label}" is verplicht.`);
+    return;
+  }
+
+  setStatus('Opslaan...');
+  const { iv, ct } = await encryptObj(fields);
+
+  if (editingId){
+    await ENTRIES.doc(editingId).set({ category: activeCat, iv, ct, updatedAt: Date.now() });
+  } else {
+    await ENTRIES.add({ category: activeCat, iv, ct, createdAt: Date.now() });
+  }
+
+  closeForm();
+  await loadEntries();
+});
+
+async function deleteEntry(id){
+  if (!confirm('Dit item verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+  setStatus('Verwijderen...');
+  await ENTRIES.doc(id).delete();
+  await loadEntries();
+}
+
+function setStatus(msg){
+  document.getElementById('statusLine').textContent = msg;
+}
+</script>
+</body>
+</html>
