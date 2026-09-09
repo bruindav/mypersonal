@@ -1,4 +1,4 @@
-<!-- fix-2 -->
+<!-- fix-3 -->
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -323,6 +323,82 @@
     margin-top:10px;
     min-height:1.2em;
   }
+
+  /* ---- Bulk import ---- */
+  #bulkBtn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    border-radius:var(--radius);
+    padding:8px 14px;
+    font-size:0.88rem;
+    margin-right:8px;
+  }
+  #bulkBtn:hover{ border-color:var(--brass); color:var(--text); }
+  #bulkOverlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(8,10,14,0.72);
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 20px;
+    overflow-y:auto;
+    z-index:20;
+  }
+  #bulkCard{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px;
+    max-width:900px;
+    width:100%;
+  }
+  #bulkCard h2{ font-size:1.15rem; margin:0 0 6px; }
+  #bulkCard p.hint{ color:var(--text-muted); font-size:0.85rem; margin:0 0 14px; }
+  #bulkPaste{
+    width:100%;
+    min-height:160px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:12px;
+    font-family:inherit;
+    font-size:0.88rem;
+    resize:vertical;
+  }
+  table#bulkTable{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:16px;
+    font-size:0.85rem;
+  }
+  table#bulkTable th{
+    text-align:left;
+    color:var(--text-muted);
+    font-weight:500;
+    font-size:0.75rem;
+    padding:6px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  table#bulkTable td{
+    padding:5px 6px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  table#bulkTable input[type=text]{
+    padding:6px 8px;
+    font-size:0.85rem;
+  }
+  table#bulkTable td.skipCol{ text-align:center; width:70px; }
+  table#bulkTable tr.skipped input{ opacity:0.4; }
+  #bulkFoot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:18px;
+  }
+  #bulkStatus{ color:var(--text-muted); font-size:0.82rem; }
 </style>
 </head>
 <body>
@@ -380,12 +456,50 @@
 
   <div class="sectionHead">
     <p id="sectionHint"></p>
-    <button id="addBtn">+ Nieuw</button>
+    <div>
+      <button id="bulkBtn" style="display:none;">Bulk importeren</button>
+      <button id="addBtn">+ Nieuw</button>
+    </div>
   </div>
 
   <div id="list"></div>
 
   <div id="statusLine"></div>
+</div>
+
+<!-- ============ BULK IMPORT MODAL ============ -->
+<div id="bulkOverlay">
+  <div id="bulkCard">
+    <h2>Adressen bulk importeren</h2>
+    <p class="hint" id="bulkStep1Hint">Plak hieronder één adres per regel (bv. gekopieerd uit een lijst of PDF). Klik daarna op "Verwerken" om een controleerbaar overzicht te krijgen — er wordt pas iets opgeslagen na "Importeren".</p>
+    <textarea id="bulkPaste" placeholder="Naam Adres Postcode Plaats&#10;Naam Adres Postcode Plaats"></textarea>
+    <div id="bulkFoot">
+      <span id="bulkStatus"></span>
+      <div>
+        <button class="btn-ghost" id="bulkCancelBtn1">Annuleren</button>
+        <button class="btn-save" id="bulkProcessBtn">Verwerken</button>
+      </div>
+    </div>
+
+    <div id="bulkReviewWrap" style="display:none;">
+      <p class="hint">Controleer en corrigeer de velden. Zet "Overslaan" aan om een regel niet te importeren.</p>
+      <div style="overflow-x:auto;">
+        <table id="bulkTable">
+          <thead>
+            <tr><th>Naam</th><th>Adres</th><th>Postcode</th><th>Plaats</th><th>Overslaan</th></tr>
+          </thead>
+          <tbody id="bulkTableBody"></tbody>
+        </table>
+      </div>
+      <div id="bulkFoot">
+        <span id="bulkStatus2"></span>
+        <div>
+          <button class="btn-ghost" id="bulkCancelBtn2">Annuleren</button>
+          <button class="btn-save" id="bulkImportBtn">Importeren</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ============ FORM MODAL ============ -->
@@ -618,6 +732,7 @@ async function unlock(){
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('passInput').value = '';
+    document.getElementById('bulkBtn').style.display = (activeCat === 'address') ? 'inline-block' : 'none';
     await loadEntries();
   }catch(e){
     console.error(e);
@@ -639,6 +754,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn => {
     document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeCat = btn.dataset.cat;
+    document.getElementById('bulkBtn').style.display = (activeCat === 'address') ? 'inline-block' : 'none';
     renderList();
   });
 });
@@ -770,6 +886,122 @@ async function deleteEntry(id){
 function setStatus(msg){
   document.getElementById('statusLine').textContent = msg;
 }
+
+/* ---------- Bulk import (adressen) ---------- */
+
+const DUTCH_STREET_SUFFIX = /\b([A-Za-zÀ-ÿ.'\-]*(?:straat|laan|weg|plein|hof|dreef|singel|kade|hage|pad|dijk|gracht|park|steeg|erf|veld|akker|kamp|tuinen?|berg|wal|markt|boulevard|route|kaap|spoor|hout|kwartier|carree|daal|dael)\b.*)$/i;
+
+function splitNaamAdres(rest){
+  const m = rest.match(DUTCH_STREET_SUFFIX);
+  if (m && rest.slice(0, m.index).trim().length){
+    return { naam: rest.slice(0, m.index).trim().replace(/,\s*$/,''), adres: m[1].trim() };
+  }
+  // Fallback: pak het laatste woord met een cijfer erin, plus het woord ervoor
+  // (vermoedelijk de straatnaam), als adres.
+  const words = rest.split(/\s+/).filter(Boolean);
+  let splitIdx = -1;
+  for (let i = words.length - 1; i >= 0; i--){
+    if (/\d/.test(words[i])){ splitIdx = i; break; }
+  }
+  if (splitIdx >= 0){
+    let start = splitIdx;
+    if (start > 0 && /^[A-ZÀ-Ÿ]/.test(words[start - 1])) start--;
+    return {
+      naam: words.slice(0, start).join(' ').replace(/,\s*$/,''),
+      adres: words.slice(start).join(' ')
+    };
+  }
+  return { naam: rest.replace(/,\s*$/,''), adres: '' };
+}
+
+function parseBulkLine(line){
+  line = line.trim();
+  if (!line) return null;
+  const pcMatch = line.match(/(\d{4}\s?[A-Za-z]{2})\b\s*(.*)$/);
+  let postcode = '', plaats = '', rest = line;
+  if (pcMatch){
+    postcode = pcMatch[1].toUpperCase().replace(/\s+/, ' ');
+    plaats = pcMatch[2].trim();
+    rest = line.slice(0, pcMatch.index).trim();
+  }
+  const { naam, adres } = splitNaamAdres(rest);
+  return { naam, adres, postcode, plaats };
+}
+
+document.getElementById('bulkBtn').addEventListener('click', () => {
+  document.getElementById('bulkPaste').value = '';
+  document.getElementById('bulkReviewWrap').style.display = 'none';
+  document.getElementById('bulkStatus').textContent = '';
+  document.getElementById('bulkOverlay').style.display = 'flex';
+});
+
+document.getElementById('bulkCancelBtn1').addEventListener('click', closeBulk);
+document.getElementById('bulkCancelBtn2').addEventListener('click', closeBulk);
+function closeBulk(){ document.getElementById('bulkOverlay').style.display = 'none'; }
+
+let bulkRows = [];
+
+document.getElementById('bulkProcessBtn').addEventListener('click', () => {
+  const lines = document.getElementById('bulkPaste').value.split('\n');
+  bulkRows = lines.map(parseBulkLine).filter(Boolean);
+
+  if (bulkRows.length === 0){
+    document.getElementById('bulkStatus').textContent = 'Geen regels gevonden.';
+    return;
+  }
+
+  const tbody = document.getElementById('bulkTableBody');
+  tbody.innerHTML = bulkRows.map((row, i) => `
+    <tr data-row="${i}">
+      <td><input type="text" data-f="naam" value="${escapeHtml(row.naam)}"></td>
+      <td><input type="text" data-f="adres" value="${escapeHtml(row.adres)}"></td>
+      <td><input type="text" data-f="postcode" value="${escapeHtml(row.postcode)}"></td>
+      <td><input type="text" data-f="plaats" value="${escapeHtml(row.plaats)}"></td>
+      <td class="skipCol"><input type="checkbox" data-f="skip"></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('bulkStatus2').textContent = `${bulkRows.length} regel(s) gevonden.`;
+  document.getElementById('bulkReviewWrap').style.display = 'block';
+});
+
+document.getElementById('bulkImportBtn').addEventListener('click', async () => {
+  const rows = Array.from(document.querySelectorAll('#bulkTableBody tr')).map(tr => {
+    const get = f => tr.querySelector(`[data-f="${f}"]`);
+    return {
+      naam: get('naam').value.trim(),
+      adres: get('adres').value.trim(),
+      postcode: get('postcode').value.trim(),
+      plaats: get('plaats').value.trim(),
+      skip: get('skip').checked
+    };
+  }).filter(r => !r.skip && r.naam);
+
+  if (rows.length === 0){
+    document.getElementById('bulkStatus2').textContent = 'Niets te importeren.';
+    return;
+  }
+
+  let done = 0;
+  for (const row of rows){
+    const fields = {
+      naam: row.naam,
+      relatie: '',
+      adres: [row.adres, [row.postcode, row.plaats].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+      telefoon: '',
+      email: '',
+      notitie: ''
+    };
+    const { iv, ct } = await encryptObj(fields);
+    await ENTRIES.add({ category: 'address', iv, ct, createdAt: Date.now() });
+    done++;
+    document.getElementById('bulkStatus2').textContent = `Bezig... ${done}/${rows.length}`;
+  }
+
+  document.getElementById('bulkStatus2').textContent = `${done} adres(sen) geïmporteerd.`;
+  await loadEntries();
+  setTimeout(closeBulk, 900);
+});
 </script>
 </body>
 </html>
